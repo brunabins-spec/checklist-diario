@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#1B4332">
+<title>Checklist Diário</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  
+  :root {
+    --verde: #1B4332;
+    --verde-med: #2D6A4F;
+    --verde-claro: #D8F3DC;
+    --verde-bright: #52B788;
+    --amarelo: #FFF3CD;
+    --amarelo-texto: #856404;
+    --cinza: #F8F9FA;
+    --cinza-borda: #DEE2E6;
+    --cinza-texto: #6C757D;
+    --vermelho: #DC3545;
+    --branco: #FFFFFF;
+    --texto: #1A1A1A;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #F0F4F0;
+    min-height: 100vh;
+    padding-bottom: 80px;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--verde);
+    color: white;
+    padding: 20px 16px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+  .header-date { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 2px; }
+  .header-actions { display: flex; gap: 8px; }
+  .btn-history { background: rgba(255,255,255,0.15); border: none; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; }
+  .btn-history:active { background: rgba(255,255,255,0.25); }
+
+  /* PROGRESS */
+  .progress-wrap { }
+  .progress-info { display: flex; justify-content: space-between; font-size: 12px; color: rgba(255,255,255,0.8); margin-bottom: 6px; }
+  .progress-bar { height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--verde-bright); border-radius: 2px; transition: width 0.4s cubic-bezier(.4,0,.2,1); }
+
+  /* CONTENT */
+  .content { padding: 16px; }
+
+  /* PROBLEMA DO DIA */
+  .problema-card {
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+    border: 1px solid var(--cinza-borda);
+  }
+  .problema-card h3 { font-size: 13px; font-weight: 600; color: var(--cinza-texto); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+  .problema-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .problema-field label { font-size: 11px; font-weight: 600; color: var(--cinza-texto); display: block; margin-bottom: 4px; }
+  .problema-field textarea {
+    width: 100%; border: 1px solid var(--cinza-borda); border-radius: 10px;
+    padding: 10px; font-size: 13px; font-family: inherit; resize: none;
+    background: var(--cinza); color: var(--texto); line-height: 1.4;
+    min-height: 70px;
+  }
+  .problema-field textarea:focus { outline: none; border-color: var(--verde-bright); background: white; }
+  .problema-field.full { grid-column: 1 / -1; }
+
+  /* STEPS */
+  .steps { display: flex; flex-direction: column; gap: 10px; }
+
+  .step-card {
+    background: white;
+    border-radius: 16px;
+    border: 1.5px solid var(--cinza-borda);
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .step-card.done { border-color: var(--verde-bright); background: #FAFFFA; }
+  .step-card.open { border-color: var(--verde); }
+
+  .step-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; cursor: pointer;
+  }
+
+  .step-check {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 2px solid var(--cinza-borda);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.2s; cursor: pointer;
+    background: white;
+  }
+  .step-check.checked { background: var(--verde-bright); border-color: var(--verde-bright); }
+  .step-check svg { display: none; }
+  .step-check.checked svg { display: block; }
+
+  .step-info { flex: 1; min-width: 0; }
+  .step-num { font-size: 10px; font-weight: 700; color: var(--cinza-texto); text-transform: uppercase; letter-spacing: 0.06em; }
+  .step-title { font-size: 14px; font-weight: 600; color: var(--texto); margin-top: 1px; line-height: 1.3; }
+  .step-card.done .step-title { color: var(--cinza-texto); text-decoration: line-through; }
+
+  .step-time {
+    font-size: 11px; color: var(--cinza-texto);
+    background: var(--cinza); padding: 3px 8px; border-radius: 10px; flex-shrink: 0;
+  }
+  .step-arrow { font-size: 12px; color: var(--cinza-texto); flex-shrink: 0; transition: transform 0.2s; }
+  .step-card.open .step-arrow { transform: rotate(180deg); }
+
+  .step-body { display: none; border-top: 1px solid var(--cinza-borda); padding: 14px 16px; }
+  .step-card.open .step-body { display: block; }
+
+  .step-desc { font-size: 13px; color: var(--cinza-texto); line-height: 1.6; margin-bottom: 10px; }
+  .step-items { list-style: none; margin-bottom: 10px; }
+  .step-items li { font-size: 13px; color: var(--texto); padding: 4px 0 4px 14px; position: relative; line-height: 1.4; }
+  .step-items li::before { content: "–"; position: absolute; left: 0; color: var(--verde-bright); font-weight: 700; }
+
+  .tip-box {
+    background: var(--amarelo); border-radius: 10px; padding: 10px 12px;
+    font-size: 12px; color: var(--amarelo-texto); line-height: 1.5; margin-top: 8px;
+    border-left: 3px solid #F5C518;
+  }
+  .frase-box {
+    background: var(--verde-claro); border-radius: 10px; padding: 10px 12px;
+    font-size: 13px; color: var(--verde); font-style: italic; margin-top: 8px;
+    font-weight: 500;
+  }
+
+  /* REGRAS */
+  .rules-card {
+    background: white; border-radius: 16px; padding: 16px;
+    margin-top: 16px; border: 1px solid var(--cinza-borda);
+  }
+  .rules-card h3 { font-size: 13px; font-weight: 600; color: var(--cinza-texto); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+  .rule { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; font-size: 13px; color: var(--texto); }
+  .rule-x { color: var(--vermelho); font-weight: 700; font-size: 15px; line-height: 1.3; flex-shrink: 0; }
+
+  /* FRASES */
+  .frases-card {
+    background: var(--verde); border-radius: 16px; padding: 16px; margin-top: 12px;
+  }
+  .frases-card h3 { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+  .frases-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .frase-pill {
+    background: rgba(255,255,255,0.12); border-radius: 10px; padding: 10px;
+    font-size: 13px; color: white; font-weight: 500; text-align: center; line-height: 1.4;
+  }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: white; border-top: 1px solid var(--cinza-borda);
+    display: flex; padding: 8px 16px 20px;
+    gap: 8px; z-index: 100;
+  }
+  .btn-reset {
+    flex: 1; background: var(--cinza); border: none; border-radius: 12px;
+    padding: 12px; font-size: 14px; font-weight: 600; color: var(--cinza-texto);
+    cursor: pointer;
+  }
+  .btn-save {
+    flex: 2; background: var(--verde); border: none; border-radius: 12px;
+    padding: 12px; font-size: 14px; font-weight: 600; color: white; cursor: pointer;
+  }
+  .btn-save:active { background: var(--verde-med); }
+
+  /* COMPLETE */
+  .complete-banner {
+    background: var(--verde-bright); border-radius: 16px; padding: 16px;
+    margin-bottom: 16px; text-align: center; display: none;
+  }
+  .complete-banner p { color: white; font-weight: 600; font-size: 15px; }
+  .complete-banner small { color: rgba(255,255,255,0.8); font-size: 12px; }
+
+  /* HISTÓRICO */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200;
+    display: none; align-items: flex-end;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white; border-radius: 20px 20px 0 0; padding: 20px 16px;
+    width: 100%; max-height: 80vh; overflow-y: auto;
+  }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .modal-header h2 { font-size: 17px; font-weight: 700; }
+  .modal-close { background: var(--cinza); border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 16px; cursor: pointer; }
+  .history-item { border: 1px solid var(--cinza-borda); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+  .history-date { font-size: 12px; font-weight: 600; color: var(--cinza-texto); margin-bottom: 6px; }
+  .history-progress { font-size: 13px; color: var(--verde); font-weight: 600; margin-bottom: 6px; }
+  .history-field { font-size: 12px; color: var(--texto); margin-bottom: 4px; line-height: 1.4; }
+  .history-field strong { color: var(--cinza-texto); }
+  .empty-history { text-align: center; color: var(--cinza-texto); font-size: 14px; padding: 32px 0; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+    background: var(--texto); color: white; padding: 10px 20px; border-radius: 20px;
+    font-size: 13px; z-index: 300; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div>
+      <h1>Checklist Diário</h1>
+      <div class="header-date" id="header-date"></div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-history" onclick="abrirHistorico()">Histórico</button>
+    </div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-info">
+      <span id="prog-texto">0 de 5 etapas</span>
+      <span id="prog-pct">0%</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+  </div>
+</div>
+
+<div class="content">
+  <div class="complete-banner" id="complete-banner">
+    <p>Checklist concluído!</p>
+    <small>Salve o registro do dia antes de fechar.</small>
+  </div>
+
+  <!-- PROBLEMA DO DIA -->
+  <div class="problema-card">
+    <h3>Registro do dia</h3>
+    <div class="problema-grid">
+      <div class="problema-field full">
+        <label>Problema identificado</label>
+        <textarea id="campo-problema" placeholder="Ex: FS LRV com custo alto hoje..." rows="2"></textarea>
+      </div>
+      <div class="problema-field full">
+        <label>Ação tomada</label>
+        <textarea id="campo-acao" placeholder="Ex: Cobrei responsável via WhatsApp, aguardando retorno..." rows="2"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEPS -->
+  <div class="steps">
+
+    <div class="step-card open" id="s1">
+      <div class="step-header" onclick="toggleStep('s1')">
+        <div class="step-check" id="c1" onclick="marcar(event,'s1','c1')">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><polyline points="2,6.5 5.5,10 11,3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="step-info">
+          <div class="step-num">Etapa 1</div>
+          <div class="step-title">Olhar os números</div>
+        </div>
+        <span class="step-time">2–3 min</span>
+        <span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <p class="step-desc">Abra o painel e responda mentalmente:</p>
+        <ul class="step-items">
+          <li>Alguma unidade com custo alto hoje?</li>
+          <li>Custo por refeição saiu do padrão?</li>
+          <li>Desperdício aumentou?</li>
+        </ul>
+        <div class="tip-box">Se algo estiver fora: marca mentalmente — "isso precisa de ação hoje"</div>
+      </div>
+    </div>
+
+    <div class="step-card" id="s2">
+      <div class="step-header" onclick="toggleStep('s2')">
+        <div class="step-check" id="c2" onclick="marcar(event,'s2','c2')">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><polyline points="2,6.5 5.5,10 11,3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="step-info">
+          <div class="step-num">Etapa 2</div>
+          <div class="step-title">Identificar 1 problema crítico</div>
+        </div>
+        <span class="step-time">1 min</span>
+        <span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <p class="step-desc">Não tenta resolver tudo. Escolha só 1:</p>
+        <ul class="step-items">
+          <li>Unidade mais cara</li>
+          <li>Maior erro</li>
+          <li>Maior risco</li>
+        </ul>
+        <div class="tip-box">Foco total em 1 problema. Só 1.</div>
+      </div>
+    </div>
+
+    <div class="step-card" id="s3">
+      <div class="step-header" onclick="toggleStep('s3')">
+        <div class="step-check" id="c3" onclick="marcar(event,'s3','c3')">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><polyline points="2,6.5 5.5,10 11,3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="step-info">
+          <div class="step-num">Etapa 3</div>
+          <div class="step-title">Cobrar o responsável</div>
+        </div>
+        <span class="step-time">2–3 min</span>
+        <span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <p class="step-desc">Manda mensagem direta, sem enrolar. Sempre pergunta causa + ação:</p>
+        <div class="frase-box">"[Unidade] com custo alto hoje. Qual o motivo e o que já foi feito?"</div>
+      </div>
+    </div>
+
+    <div class="step-card" id="s4">
+      <div class="step-header" onclick="toggleStep('s4')">
+        <div class="step-check" id="c4" onclick="marcar(event,'s4','c4')">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><polyline points="2,6.5 5.5,10 11,3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="step-info">
+          <div class="step-num">Etapa 4</div>
+          <div class="step-title">Validar a resposta</div>
+        </div>
+        <span class="step-time">1–2 min</span>
+        <span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <p class="step-desc">Quando responderem, verifique:</p>
+        <ul class="step-items">
+          <li>Faz sentido?</li>
+          <li>Tem ação clara?</li>
+          <li>Tem prazo?</li>
+        </ul>
+        <div class="frase-box">"Qual ação prática você vai fazer e até quando?"</div>
+      </div>
+    </div>
+
+    <div class="step-card" id="s5">
+      <div class="step-header" onclick="toggleStep('s5')">
+        <div class="step-check" id="c5" onclick="marcar(event,'s5','c5')">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><polyline points="2,6.5 5.5,10 11,3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="step-info">
+          <div class="step-num">Etapa 5</div>
+          <div class="step-title">Registrar mentalmente</div>
+        </div>
+        <span class="step-time">1–2 min</span>
+        <span class="step-arrow">▾</span>
+      </div>
+      <div class="step-body">
+        <p class="step-desc">Antes de fechar:</p>
+        <ul class="step-items">
+          <li>Qual unidade está pior essa semana?</li>
+          <li>Quem está performando mal?</li>
+        </ul>
+        <div class="tip-box">Isso te prepara para a reunião semanal.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- REGRAS -->
+  <div class="rules-card">
+    <h3>Seu papel é cobrar, não executar</h3>
+    <div class="rule"><span class="rule-x">×</span><span>Não resolve o problema por eles</span></div>
+    <div class="rule"><span class="rule-x">×</span><span>Não entra no detalhe operacional</span></div>
+    <div class="rule"><span class="rule-x">×</span><span>Não ignora número</span></div>
+  </div>
+
+  <!-- FRASES -->
+  <div class="frases-card">
+    <h3>Frases que viram sua rotina</h3>
+    <div class="frases-grid">
+      <div class="frase-pill">"Qual o número?"</div>
+      <div class="frase-pill">"Qual a causa?"</div>
+      <div class="frase-pill">"Qual a ação?"</div>
+      <div class="frase-pill">"Até quando?"</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="btn-reset" onclick="resetar()">Reiniciar</button>
+  <button class="btn-save" onclick="salvar()">Salvar registro do dia</button>
+</div>
+
+<!-- MODAL HISTÓRICO -->
+<div class="modal-overlay" id="modal-overlay" onclick="fecharHistorico(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Histórico</h2>
+      <button class="modal-close" onclick="fecharHistorico()">✕</button>
+    </div>
+    <div id="historico-lista"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const TOTAL = 5;
+let concluidos = 0;
+
+// Data
+const hoje = new Date();
+const opts = { weekday:'long', day:'numeric', month:'long', year:'numeric' };
+document.getElementById('header-date').textContent = hoje.toLocaleDateString('pt-BR', opts);
+
+// Toggle step
+function toggleStep(id) {
+  const el = document.getElementById(id);
+  if (el.classList.contains('done')) return;
+  el.classList.toggle('open');
+}
+
+// Marcar etapa
+function marcar(e, sid, cid) {
+  e.stopPropagation();
+  const check = document.getElementById(cid);
+  const step = document.getElementById(sid);
+  const feito = check.classList.contains('checked');
+  if (feito) {
+    check.classList.remove('checked');
+    step.classList.remove('done');
+    step.classList.add('open');
+    concluidos = Math.max(0, concluidos - 1);
+  } else {
+    check.classList.add('checked');
+    step.classList.add('done');
+    step.classList.remove('open');
+    concluidos++;
+    // Abre próxima
+    const num = parseInt(sid.replace('s',''));
+    if (num < TOTAL) {
+      const prox = document.getElementById('s' + (num+1));
+      if (prox && !prox.classList.contains('done')) prox.classList.add('open');
+    }
+  }
+  atualizar();
+}
+
+function atualizar() {
+  const pct = Math.round((concluidos / TOTAL) * 100);
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-texto').textContent = concluidos + ' de ' + TOTAL + ' etapas';
+  document.getElementById('prog-pct').textContent = pct + '%';
+  document.getElementById('complete-banner').style.display = concluidos === TOTAL ? 'block' : 'none';
+}
+
+// Salvar
+function salvar() {
+  const problema = document.getElementById('campo-problema').value.trim();
+  const acao = document.getElementById('campo-acao').value.trim();
+  const dataKey = hoje.toISOString().split('T')[0];
+  const registro = {
+    data: hoje.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' }),
+    etapas: concluidos,
+    problema: problema,
+    acao: acao,
+    hora: new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' })
+  };
+  const historico = JSON.parse(localStorage.getItem('checklist_historico') || '[]');
+  const idx = historico.findIndex(h => h.dataKey === dataKey);
+  if (idx >= 0) historico[idx] = { ...registro, dataKey };
+  else historico.unshift({ ...registro, dataKey });
+  if (historico.length > 30) historico.pop();
+  localStorage.setItem('checklist_historico', JSON.stringify(historico));
+  mostrarToast('Registro salvo!');
+}
+
+// Resetar
+function resetar() {
+  if (!confirm('Reiniciar o checklist de hoje?')) return;
+  for (let i = 1; i <= TOTAL; i++) {
+    document.getElementById('c' + i).classList.remove('checked');
+    const s = document.getElementById('s' + i);
+    s.classList.remove('done', 'open');
+  }
+  document.getElementById('s1').classList.add('open');
+  document.getElementById('campo-problema').value = '';
+  document.getElementById('campo-acao').value = '';
+  concluidos = 0;
+  atualizar();
+}
+
+// Histórico
+function abrirHistorico() {
+  const historico = JSON.parse(localStorage.getItem('checklist_historico') || '[]');
+  const lista = document.getElementById('historico-lista');
+  if (historico.length === 0) {
+    lista.innerHTML = '<div class="empty-history">Nenhum registro ainda.<br>Salve o checklist do dia para começar.</div>';
+  } else {
+    lista.innerHTML = historico.map(h => `
+      <div class="history-item">
+        <div class="history-date">${h.data} ${h.hora ? '— ' + h.hora : ''}</div>
+        <div class="history-progress">${h.etapas} de 5 etapas concluídas</div>
+        ${h.problema ? `<div class="history-field"><strong>Problema:</strong> ${h.problema}</div>` : ''}
+        ${h.acao ? `<div class="history-field"><strong>Ação:</strong> ${h.acao}</div>` : ''}
+      </div>
+    `).join('');
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function fecharHistorico(e) {
+  if (!e || e.target === document.getElementById('modal-overlay') || e.currentTarget === document.querySelector('.modal-close')) {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+}
+
+// Toast
+function mostrarToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// Carregar registro do dia se existir
+window.onload = function() {
+  const dataKey = hoje.toISOString().split('T')[0];
+  const historico = JSON.parse(localStorage.getItem('checklist_historico') || '[]');
+  const reg = historico.find(h => h.dataKey === dataKey);
+  if (reg) {
+    document.getElementById('campo-problema').value = reg.problema || '';
+    document.getElementById('campo-acao').value = reg.acao || '';
+  }
+};
+</script>
+</body>
+</html>
